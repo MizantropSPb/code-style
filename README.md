@@ -8,7 +8,7 @@
 Пример:
 ```systemverilog
 if (a)
-  b = c;
+  b <= c;
 ```
 
 ```systemverilog
@@ -48,11 +48,11 @@ a = (b == c) ? y : z;
 
 ```systemverilog
 ...
-  input        iclk,
-  input  [1:0] imode,
-  input        imode_en,
-  output [7:0] odata,
-  output       odata_val
+  input  wire         iclk,
+  input  wire [ 1: 0] imode,
+  input  wire         imode_en,
+  output reg  [ 7: 0] odata,
+  output reg          odata_val
 ...
 ```
 
@@ -64,15 +64,15 @@ a = (b == c) ? y : z;
 Для облегчения чтения необходимо делать пустые пробелы между сущностями:
 ```systemverilog
 ...
-  input        clk_i,
+  input  wire         iclk,
 
-  input  [1:0] mode_i,
-  input        mode_en_i,
+  input  wire [ 1: 0] imode,
+  input  wire         imode_en,
 
-  output [7:0] data_o,
-  output       data_val_o
+  output reg  [ 7: 0] odata,
+  output reg          odata_val
 ...
-```
+``````
 
 ## Выравнивание
 Выравнивание необходимо для облегчения чтения кода.
@@ -182,7 +182,7 @@ assign data_ready = ( pkt_word_cnt > 8'd5 ) && ( !data_enable ) && ( pkt_len <= 
 ```systemverilog
 always_comb
   begin
-    if( data_enable && ( fifo_bytes_empty >= pkt_size ) )
+    if (data_enable && (fifo_bytes_empty >= pkt_size))
       ...
   end
 ```
@@ -190,14 +190,14 @@ always_comb
 #### Пример #3
 
 ```systemverilog
-assign start_stb_o = ( ( state == RED_S    ) && ( next_state != IDLE_S  ) ) ||
-                     ( ( state == YELLOW_S ) && ( next_state != GREEN_S ) );
+assign start_stb = ((state == RED_S   ) && (next_state != IDLE_S )) ||
+                   ((state == YELLOW_S) && (next_state != GREEN_S));
 ```
 
 ### `if-else`
 
 ```systemverilog
-if( a > 5 )
+if (a > 5)
   d = 5;
 else
   d = 15;
@@ -206,7 +206,7 @@ else
 ### `if-else` вместе с `begin/end`
 
 ```systemverilog
-if( a > 5 )
+if (a > 5)
   begin
     c = 7;
     d = 5;
@@ -221,10 +221,10 @@ else
 ### Вложенный `if-else`
 
 ```systemverilog
-if( a > 5 )
+if (a > 5)
   c = 7;
 else
-  if( a > 3 )
+  if (a > 3)
     c = 4;
   else 
     c = 5;
@@ -233,15 +233,15 @@ else
 ### Тернарный оператор `?`
 
 ```systemverilog
-assign y = ( a > c ) ? ( d ) : ( e );
+assign y = (a > c) ? d : e;
 ```
 
-Обращаю внимание, что условие и переменные `d`, `e` взяты в круглые скобки.
+Обращаю внимание, что условие взято в круглые скобки.
 
 Для облегчения чтения (и проверки/написания) допускается (и во многих случаях рекомендуется) писать в две строки:
 ```systemverilog
-assign y = ( a > c ) ? ( cnt_gt_zero ):
-                       ( cnt_le_zero );
+assign y = (a > c) ? cnt_gt_zero :
+                     cnt_le_zero;
 ```
 
 ### `case`
@@ -250,30 +250,30 @@ assign y = ( a > c ) ? ( cnt_gt_zero ):
 варианты друг от друга пустой строкой.
 
 ```systemverilog
-case (opcode [ 1: 0])
+case (code [ 1: 0])
   2'b00:
     begin
-      state = OR_S;
+      state <= OR_S;
     end
 
   2'b01:
     begin
-      state = AND_S;
+      state <= AND_S;
     end
 
   2'b10:
     begin
-      state = NOT_S;
+      state <= NOT_S;
     end
 
   2'b11:
     begin
-      state = XOR_S;
+      state <= XOR_S;
     end
 
   default:
     begin
-      state = AND_S;
+      state <= AND_S;
     end
 endcase
 ``` 
@@ -282,18 +282,19 @@ endcase
 то допускается делать так (для уменьшения строк и текста):
 
 ```systemverilog
-case( opcode[1:0] )
-  2'b00:   next_state = OR_S;
-  2'b01:   next_state = AND_S;
-  2'b10:   next_state = NOT_S;
-  2'b11:   next_state = XOR_S;
-  default: next_state = AND_S;
+case (code[ 1: 0])
+    2'b00: state <= OR_S;
+    2'b01: state <= AND_S;
+    2'b10: state <= NOT_S;
+    2'b11: state <= XOR_S;
+  default: state <= AND_S;
 endcase
 ```
 
 Обратите внимание на наличие выравнивания для облегчения чтения.
 
 ### `function` и `task`
+Использование в большинстве случаев не привествуется. Разумная альтернатива: создание отдельного модуля, явное комбинаторное описание и т.п.
 
 ```systemverilog
 function int calc_sum( input int a, int b );
@@ -317,7 +318,7 @@ task some_magic(
 ...
 endtask
 ```
-Однако, если у вас большое количество аргументов, возможно что-то вы делаете не так...
+Однако, если у вас большое количество аргументов, у вас что-то пошло не так...
 
 ### Еще один пример 
 ```systemverilog
@@ -383,6 +384,7 @@ always_ff @(posedge iclk)
 
 - Имя переменной должно отражать ее назначение. 
   Следует избегать чрезмерно длинных и, особенно, чрезмерно коротких названий (`rd_addr` лучше чем `ra`).
+  Пример подключения fifo (frd_data, frd_data_valid, frd_en, frd_empty, fwr_data, fwr_data_valid, fwr_en, fwr_full)
 
 - Названия портов должны содержать префикс `i` для входных, `o` для выходных, `io` для 
   двунаправленных сигналов, без занака `_` после префикса
@@ -397,7 +399,12 @@ always_ff @(posedge iclk)
     - `2.048 МГц -> clk_2m048`
     - `156.25 МГц -> clk_156m25`
     - `250 МГц -> clk_250m`
-- Большинству модулей без разницы, какой именно клок (конкретное точное значение) к нему приходит, 
+- Если модуль содержит один клок то используется название `iclk`. Модуль 
+- Работа с внешними клоками и генерация необходимых внутренних производится в одном модуле расположенном на уровне top.
+- Если модуль использует один клок то соотвествующий порт называется `iclk`.
+- Следует делать разделение на клоковые домены максимально близко уровню top.
+- 
+- Модуль без разницы, какой именно клок (конкретное точное значение) к нему приходит, 
   поэтому если разрабатываете модуль, который будет работать на частоте 100 МГц, то для названия порта модуля 
   следует использовать общее название `iclk`, а где-то "сверху" подключить нужные 100 МГц:
 
@@ -426,15 +433,16 @@ always_ff @(posedge iclk)
 
 ## Описание ресетов
 Есть два типа ресета (сброса):
-  - асинхронный `rst`
-  - синхронный  `srst`
+  - асинхронный `async_rst`
+  - синхронный  `sync_rst`
 
+В большинстве случаев мы используем синхронный сброс. Синхронность обеспечивается 
 Чаще всего это используется как вход для описываемого модуля:
 ```systemverilog
 ...
 
-  input     iclk,
-  input     irst,
+  input  wire iclk,
+  input  wire irst,
 
 ...
 ```
