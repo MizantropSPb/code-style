@@ -18,7 +18,7 @@ if (a == cons)
   input  wire iclk,
   input  wire irst,
 
-  output reg  odata_dir,
+  output reg  odata_dir = 1'h0,
   inout  wire [ 7: 0] iodata,
 ...
 ```
@@ -53,8 +53,8 @@ a = (b == c) ? y : z;
   input  wire         irst,
   input  wire [ 1: 0] imode,
   input  wire         imode_en,
-  output reg  [ 7: 0] odata,
-  output reg          odata_val
+  output reg  [ 7: 0] odata     = 8'h0,
+  output reg          odata_val = 1'h0
 ...
 ```
 
@@ -72,8 +72,8 @@ a = (b == c) ? y : z;
   input  wire [ 1: 0] imode,
   input  wire         imode_en,
 
-  output reg  [ 7: 0] odata,
-  output reg          odata_val
+  output reg  [ 7: 0] odata     = 8'h0,
+  output reg          odata_val = 1'h0
 ...
 ``````
 
@@ -430,8 +430,8 @@ always_ff @(posedge iclk)
 
 ## Описание ресетов
 Есть два типа ресета (сброса):
-  - асинхронный `async_rst` (синоиним `rst`)
-  - синхронный  `sync_rst`
+  - асинхронный `arst`
+  - синхронный  `srst` (синоиним `rst`)
 
  - В большинстве случаев мы используем синхронный сброс.
  - При объявлении портов модуля синхронный сброс описываются сразу после соотвествующего клока. При необходимости можно использовать шаблон, аналогично клоку.
@@ -458,7 +458,7 @@ always_ff @(posedge iclk)
 
 Описание триггера с асинхронным ресетом:
 ```
-always_ff @(posedge iclk or posedge irst)
+always_ff @(posedge iclk or posedge iarst)
   if (irst)
     cnt <= 8'h0;
   else
@@ -467,8 +467,8 @@ always_ff @(posedge iclk or posedge irst)
 
 Описание триггера с синхронным и асинхронным ресетом:
 ```
-always_ff @(posedge iclk or posedge irst)
-  if (irst)
+always_ff @(posedge iclk or posedge iarst)
+  if (iarst)
     cnt <= 8'd0;
   else
     if (isrst)
@@ -654,6 +654,50 @@ always_latch
   end
 ```
 
+### Интерфейсы
+ - Интрефейсы описываются в отдельном модуле
+ - Название интерфейса содержит суфикс if
+ - Интерфейс должен объединять разнонаправленные порты
+ - Интерфейсы создаются в случае если порты, входящие в их состав, предполагается использовать только совместно. Нельзя создавать интерфейс который будет использоваться "по частям" в разных модулях
+
+```systemverilog
+`define AW 16
+`define DW 16
+
+interface cpu_if;
+
+  logic [`AW - 1: 0] addr;
+  logic [`DW - 1: 0] wr_data;
+  logic [`DW - 1: 0] rd_data;
+  logic              wr_en;
+  logic              src_req,
+  logic              dst_ack,
+  logic              dst_rdy
+
+modport src (
+  output [`AW - 1: 0] addr,
+  output [`DW - 1: 0] wr_data,
+  input  [`DW - 1: 0] rd_data,
+  output              wr_en,
+  output              src_req,
+  input               dst_ack,
+  input               dst_rdy
+);
+
+modport dst (
+  input  [`AW - 1: 0] addr,
+  input  [`DW - 1: 0] wr_data,
+  output [`DW - 1: 0] rd_data,
+  input               wr_en,
+  input               src_req,
+  output              dst_ack,
+  output              dst_rdy
+);
+
+endinterface
+```
+
+
 ## Описание и объявление модулей
 
 ### Описание модуля
@@ -708,13 +752,13 @@ some_module #(
   .CNT_WIDTH  ( 4  )
 ) some_module_inst
 (
-  .iclk       ( rx_clk      ),
-  .irst       ( main_rst    ),
+  .iclk          ( rx_clk      ),
+  .irst          ( main_rst    ),
 
-  .idata      ( rx_data     ),
-  .idata_val  ( rx_data_val ),
+  .irx_data      ( rx_data     ),
+  .irx_data_val  ( rx_data_val ),
 
-  .ocnt       ( cnt         )
+  .ocnt          ( cnt         )
 );  
 ```
 
@@ -773,14 +817,13 @@ assign vlan_mpls_cnt = vlan_cnt + mpls_cnt;
   множественным назначением на этапе компиляции и ошибки, вызванные отсутствием
   инициализации. Рекомендуется использовать тип logic только в описаниях интерфейсов (порт с одним названием и разным направлением для разных модификаций интрефейса)
 
-- Настоятельно рекомендуется защелкивать в триггеры выходные сигналы модулей.
-  Это повысит максимальную скорость работы устройства.
+- Широкое использование типов reg и wire увеличит шансы повторного использования кода в проектах на чистом Verilog. Кроме того, явное описание тригеров улучшает читаемость кода и предотвращает ошибки
 
-- Все критичные к быстродействию узлы по возможности следует размещать в
-  отдельном модуле. Это позволит оптимизировать его независимо от прочих узлов.
+- Настоятельно рекомендуется защелкивать в триггеры выходные сигналы модулей. Это повысит максимальную скорость работы устройства.
 
-- Все макроподстановки (`define) должны определяться в отдельном файле. В исключительных случаях, допустимо определение в
-  самом модуле.
+- Все критичные к быстродействию узлы по возможности следует размещать в отдельном модуле. Это позволит оптимизировать его независимо от прочих узлов.
+
+- Все макроподстановки (`define) должны определяться в отдельном файле. В исключительных случаях, допустимо определение в самом модуле.
 
 - Категорически запрещается "пробрасывать" сигнал сквозь модуль если значение сигнала, внутри модуля, не изменяется.
 
