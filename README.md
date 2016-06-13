@@ -41,14 +41,15 @@ a = (b == c) ? y : z;
 ```
 
 ### Пустые строчки
-Любые логические вещи необходимо отделять пустой строчкой.
-Под `логической вещью` понимается какой-то интерфейс или совокупность сигналов, которые имеют одинаковое назначение или цель.
+Любые, логические связаные, порты необходимо отделять пустой строчкой.
+Под `логические связаные порты` понимается совокупность сигналов, которые имеют одинаковое назначение или цель.
 
 Пример:
-
+Неправильно:
 ```systemverilog
 ...
   input  wire         iclk,
+  input  wire         irst,
   input  wire [ 1: 0] imode,
   input  wire         imode_en,
   output reg  [ 7: 0] odata,
@@ -57,14 +58,15 @@ a = (b == c) ? y : z;
 ```
 
 Здесь мы видим, что есть три разные сущности:
-  - синхроимпульс `iclk`
+  - клок `iclk` и синхронный сброс `irst`
   - настройка какого-то режима работы `imode` и его разрешения `imode_en`
   - сигнал выходных данных `odata` и валидность этого сигнала `odata_valid`
 
-Для облегчения чтения необходимо делать пустые пробелы между сущностями:
+Правильно:
 ```systemverilog
 ...
   input  wire         iclk,
+  input  wire         irst,
 
   input  wire [ 1: 0] imode,
   input  wire         imode_en,
@@ -86,7 +88,7 @@ a = (b == c) ? y : z;
 // BAD EXAMPLE
 logic rd_stb; //buffer read strobe
 logic [31:0] ram_data; //data from RAM block
-logic [1:0]if_mode; //interface mode
+logic [1:0]mode; //interface mode
 ```
 
 Правильно:
@@ -94,32 +96,32 @@ logic [1:0]if_mode; //interface mode
 // GOOD EXAMPLE
 logic         rd_stb;    // buffer read strobe
 logic [31: 0] ram_data;  // data from RAM block
-logic [ 1: 0] if_mode;   // interface mode
+logic [ 1: 0] mode;      // interface mode
 ```
 
 ### Пример #2
 Неправильно:
 ```systemverilog
 // BAD EXAMPLE
-input clk_i,
-input rst_i,
-input [31:0] data_i,
-input data_valid_i,
-output logic [7:0] data_o,
-output data_valid_o
+input iclk,
+input irst,
+input [31:0] idata,
+input idata_valid,
+output logic [7:0] odata,
+output odata_valid
 ```
 
 Правильно:
 ``` systemverilog
 // GOOD EXAMPLE
-input                            clk_i,
-input                            rst_i,
+input                 iclk,
+input                 irst,
 
-input         [31:0]             data_i,
-input                            data_valid_i,
+input         [31: 0] idata,
+input                 idata_valid,
 
-output  logic [7:0]              data_o,
-output                           data_valid_o
+output  logic [ 7: 0] odata,
+output                odata_valid
 
 ```
 Примечание:
@@ -146,20 +148,20 @@ assign next_pkt_len = pkt_len + 16'd4;
 Неправильно:
 ```systemverilog
 // BAD EXAMPLE
-always_ff @( posedge clk_i )
+always_ff @(posedge iclk)
   begin
-    pkt_data_d1 <= pkt_data_i;
-    pkt_empty_d1 <= pkt_empty_i;
+    pkt_data_d1 <= ipkt_data;
+    pkt_empty_d1 <= ipkt_empty;
   end
 ```
 
 Правильно:
 ```systemverilog
 // GOOD EXAMPLE
-always_ff @( posedge clk_i )
+always_ff @(posedge iclk)
   begin
-    pkt_data_d1  <= pkt_data_i;
-    pkt_empty_d1 <= pkt_empty_i;
+    pkt_data_d1  <= ipkt_data;
+    pkt_empty_d1 <= ipkt_empty;
   end
 ```
 
@@ -174,7 +176,7 @@ always_ff @( posedge clk_i )
 ```systemverilog
 logic data_ready;
 
-assign data_ready = ( pkt_word_cnt > 8'd5 ) && ( !data_enable ) && ( pkt_len <= 16'd64 );
+assign data_ready = (pkt_word_cnt > 8'd5) && (!data_enable) && (pkt_len <= 16'd64);
 ```
 
 #### Пример #2
@@ -182,7 +184,7 @@ assign data_ready = ( pkt_word_cnt > 8'd5 ) && ( !data_enable ) && ( pkt_len <= 
 ```systemverilog
 always_comb
   begin
-    if (data_enable && (fifo_bytes_empty >= pkt_size))
+    if ((data_enable == 1'h1) && (fifo_bytes_empty >= pkt_size))
       ...
   end
 ```
